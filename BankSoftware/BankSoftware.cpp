@@ -5,6 +5,13 @@
 
 using namespace std;
 
+string hashPassword(string password)
+{
+    hash<string> hashedPassword;
+
+    return to_string(hashedPassword(password));
+}
+
 bool hasExistingUsername(fstream& file,string username)
 {
     string fileLine;
@@ -99,7 +106,7 @@ void login(fstream& file)
 
     compareString.append(username);
     compareString.append(":");
-    compareString.append(password);
+    compareString.append(hashPassword(password));
 
     while (getline(file,fileLine))
     {
@@ -156,7 +163,7 @@ void regist(fstream& file)
     else
     {
         
-        file << username+":"+password+":0" <<endl;
+        file << username+":"+hashPassword(password)+":0" <<endl;
 
         actionMenu(file);
     }
