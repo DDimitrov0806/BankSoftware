@@ -5,6 +5,83 @@
 
 using namespace std;
 
+bool hasExistingUsername(fstream& file,string username)
+{
+    string fileLine;
+
+    while (getline(file, fileLine))
+    {
+
+        if (fileLine.compare(0, username.size(), username) == 0)
+        {
+            return true;
+        }
+    }
+
+    file.clear();
+    file.seekg(0, file.beg);
+
+    return false;
+}
+
+bool isValidPassword(string password, string confirmPassword)
+{
+    bool capitalLetter = false, smallLetter = false,containsSymbol=false;
+
+    if (password != confirmPassword)
+    {
+        cout << "The two passwords doesn't match!" << endl;
+
+        return false;
+    }
+
+    if (password.size() < 5)
+    {
+        cout << "Password should be atleast 5 characters long!" << endl;
+
+        return false;
+    }
+
+    for (int i = 0; i < password.size(); i++)
+    {
+        if (password[i] >= 'A' && password[i] <= 'Z')
+        {
+            capitalLetter = true;
+        }
+        else if (password[i] >= 'a' && password[i] <= 'z')
+        {
+            smallLetter = true;
+        }
+        else if (password[i] < '0' && password[i]>'9')
+        {
+            return false;
+        }
+    }
+
+    if (password.find('!') != string::npos
+        || password.find('@') != string::npos
+        || password.find('#') != string::npos
+        || password.find('$') != string::npos
+        || password.find('%') != string::npos
+        || password.find('^') != string::npos
+        || password.find('&') != string::npos
+        || password.find('*') != string::npos)
+    {
+        containsSymbol = true;
+    }
+
+    if (smallLetter == true && capitalLetter == true && containsSymbol == true)
+    {
+        return true;
+    }
+    else
+    {
+        cout << "Invalid password!" << endl;
+
+        return false;
+    }
+}
+
 void actionMenu(fstream& file)
 {
     cout << "ActionMenu";
@@ -44,6 +121,45 @@ void login(fstream& file)
 
 void regist(fstream& file)
 {
+    string username, password, confirmPassword;
+
+    cout << "Username: " << endl;
+    cin >> username;
+    
+    cout << "Password:" << endl;
+    cin >> password;
+
+    cout << "Confirm password: " << endl;
+    cin >> confirmPassword;
+
+    for (int i = 0; i < username.size(); i++)
+    {
+        if (username[i] < 33 || (username[i] >= 48 && username[i] <= 57) || username[i]>126)
+        {
+            cout << "Username contains invalid characters!" << endl;
+
+            regist(file);
+        }
+    }
+
+    if (hasExistingUsername(file, username) == true)
+    {
+        cout << "Already exist a user with this username!\nPlease select another username!" << endl;
+
+        regist(file);
+    }
+
+    if (isValidPassword(password, confirmPassword) == false)
+    {
+        regist(file);
+    }
+    else
+    {
+        
+        file << username+":"+password+":0" <<endl;
+
+        actionMenu(file);
+    }
 
 }
 
@@ -52,23 +168,22 @@ void quit()
 
 }
 
-void mainMenu()
+void mainMenu(fstream& file)
 {
     char action;
 
-    string fileName = "users.txt";
+    /*string fileName = "users.txt";
     fstream file;
-    file.open(fileName, ios::out | ios::in);
+    file.open(fileName, ios::in | ios::out | ios::app);
 
     if (!file.is_open())
     {
         cout << "Could not find " + fileName + " !\nPlease make sure the file is in the correct directory and is named correctly!"<<endl;
         return;
-    }
+    }*/
 
     cout << "\tPlease select one of the following actions: " << endl;
     cout << "==========================================================" << endl;
-
     cout << "L-login" << endl;
     cout << "R-register" << endl;
     cout << "Q-quit" << endl;
@@ -86,7 +201,6 @@ void mainMenu()
 
     if (action == 'R' || action == 'r')
     {
-        cout << "register";
         regist(file);
         return;
     }
@@ -100,7 +214,7 @@ void mainMenu()
 
     cout << "Please select valid action!"<<endl<<endl;
 
-    mainMenu();
+    mainMenu(file);
 
 }
 
@@ -108,6 +222,20 @@ void mainMenu()
 
 int main()
 {
-    mainMenu();
+    string fileName = "users.txt";
+    fstream file;
+    file.open(fileName, ios::in | ios::out | ios::app);
+
+    if (!file.is_open())
+    {
+        cout << "Could not find " + fileName + " !\nPlease make sure the file is in the correct directory and is named correctly!" << endl;
+        return 0;
+    }
+
+    mainMenu(file);
+
+    file.close();
+
+    return 0;
 
 }

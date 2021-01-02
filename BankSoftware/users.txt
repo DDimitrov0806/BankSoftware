@@ -1,2 +1,1 @@
-dani:1234:dasd
-user:user:asda
+user:!Aa12:0
