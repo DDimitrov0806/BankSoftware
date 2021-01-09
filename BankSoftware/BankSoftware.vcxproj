@@ -141,11 +141,6 @@
   <ItemGroup>
     <ClCompile Include="BankSoftware.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <Text Include="users.txt">
-      <DeploymentContent>true</DeploymentContent>
-    </Text>
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

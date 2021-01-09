@@ -8,13 +8,25 @@ using namespace std;
 
 const char* FILENAME = "users.txt";
 
+void mainMenu(fstream& file);
+
+string hashPassword(string password);
+
+bool hasExistingUsername(fstream& file, string username);
+
+bool isValidPassword(string password, string confirmPassword);
+
+void login(fstream& file);
+
+void regist(fstream& file);
+
 struct User
 {
     string username, password;
 
-    float money=0.0;
+    double money=0.0;
 
-    const float OVERDRAFT = -10000.0;
+    const double OVERDRAFT = -10000.0;
 
 
     User(string username, string password,fstream& file)
@@ -29,7 +41,7 @@ struct User
 
     }
 
-    bool isOverdraft(float amount)
+    bool isOverdraft(double amount)
     {
         if (money < (OVERDRAFT+amount))
         {
@@ -39,72 +51,50 @@ struct User
         return false;
     }
 
-    float fixDouble(float number)
+    double fixDouble(double number)
     {
-       // return (float)((int)(number * 100 )) / 100.0;
-
-        //return (number * 100) / 100.0;
-
-        return floorf(number * 100) / 100;
+        return (double)((int)(number * 100 )) / 100.0;
     }
 
     void saveChanges(fstream& file)
     {
-        string fileLine;
-
-        ofstream edit("edit.txt");
-
-        while (getline(file, fileLine))
+        if (file.peek() == EOF)
+        {
+            file << username + ":" + hashPassword(password) + ":" << money << endl;
+        }
+        else
         {
 
-            //temp << fileLine << endl;
+            string fileLine;
 
-            if (fileLine.substr(0, fileLine.find(":")) == username)
+            ofstream edit("edit.txt");
+
+            while (getline(file, fileLine))
             {
-                size_t pos = fileLine.find_last_of(':');
+                if (fileLine.substr(0, fileLine.find(":")) == username)
+                {
+                    size_t pos = fileLine.find_last_of(':');
 
-                edit << fileLine.substr(0,pos)+":"<<money << endl;
+                    edit << fileLine.substr(0, pos) + ":" << money << endl;
+                }
+                else
+                {
+                    edit << fileLine << endl;
+                }
             }
-            else
-            {
-                edit << fileLine << endl;
-            }          
+
+            edit.close();
+            file.close();
+
+
+            remove(FILENAME);
+            rename("edit.txt", FILENAME);
+
+            file.open(FILENAME);
         }
-        
-        edit.close();
-        file.close();
-
-
-        remove(FILENAME);
-        rename("edit.txt", FILENAME);
-
-        file.open(FILENAME);
-
     }
 
-    void transfer(User& transferUser,float transferAmount)
-    {
-        money = money - transferAmount;
-
-        transferUser.money = transferUser.money + transferAmount;
-
-    }
-
-    void withdraw(float amount)
-    {
-       
-        amount = fixDouble(amount);
-
-        money = money - amount;
-       
-    }
-
-    void deposit(float amount)
-    {
-        money = money + fixDouble(amount);
-    }
-
-    float getUserMoney(fstream& file)
+    double getUserMoney(fstream& file)
     {
         string fileLine;
 
@@ -115,7 +105,7 @@ struct User
             {
                 size_t pos = fileLine.find_last_of(':')+1;
 
-                float money = stof(fileLine.substr(pos));
+                double money = stod(fileLine.substr(pos));
 
                 file.clear();
                 file.seekg(0, file.beg);
@@ -132,7 +122,9 @@ struct User
 
 };
 
-void mainMenu(fstream& file);
+void actionMenu(fstream& file, User& user);
+
+void deleteUser(fstream& file, User& user);
 
 string hashPassword(string password)
 {
@@ -147,7 +139,6 @@ bool hasExistingUsername(fstream& file,string username)
 
     while (getline(file, fileLine))
     {
-
         if (fileLine.compare(0, username.size(), username) == 0)
         {
             file.clear();
@@ -174,16 +165,14 @@ User getUser(fstream& file,string username)
 
         if (fileLine.compare(0, username.size(), username) == 0)
         {
-            size_t firstSeparator = fileLine.find(':');
+            file.clear();
+            file.seekg(0, file.beg);
 
-            size_t secondSeparator = fileLine.find_last_of(':');
+            size_t firstSeparator = fileLine.find(':');
 
             transferUser.username = fileLine.substr(0,firstSeparator);
 
             transferUser.money = transferUser.getUserMoney(file);
-
-            file.clear();
-            file.seekg(0, file.beg);
 
             return transferUser;
         }
@@ -213,7 +202,7 @@ bool isValidPassword(string password, string confirmPassword)
         return false;
     }
 
-    for (int i = 0; i < password.size(); i++)
+    for (unsigned int i = 0; i < password.size(); i++)
     {
         if (password[i] >= 'A' && password[i] <= 'Z')
         {
@@ -253,80 +242,111 @@ bool isValidPassword(string password, string confirmPassword)
     }
 }
 
+void deleteUser(fstream& file, User& user)
+{
+    string confirmPassword;
+
+    cout << "Enter password to delete the account: ";
+    cin >> confirmPassword;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+    if (confirmPassword == user.password)
+    {
+        if (user.money == 0)
+        {
+            string fileLine;
+
+            ofstream temp("temp.txt");
+
+            while (getline(file, fileLine))
+            {
+                if (fileLine.substr(0, fileLine.find(":")) != user.username)
+                {
+                    temp << fileLine << endl;
+                }
+            }
+
+            file.close();
+            temp.close();
+
+            remove(FILENAME);
+
+            rename("temp.txt", FILENAME);
+
+            file.open(FILENAME);
+
+            mainMenu(file);
+
+            return;
+        }
+        else
+        {
+            cout << "The bank account should be empty before it can be deleted!" << endl;
+
+            actionMenu(file, user);
+        }
+    }
+    else
+    {
+        cout << "Password is incorect" << endl;
+
+        actionMenu(file, user);
+    }
+}
+
 void actionMenu(fstream& file, User& user)
 {
     char userInput;
 
     cout << "You have "<< user.money << " BGN. Choose one of the following options:" << endl;
+    cout << string(50, '-') << endl;
     cout << "C-cancel account" << endl;
     cout << "D-deposit" << endl;
     cout << "L-logout" << endl;
     cout << "T-transfer" << endl;
     cout << "W-withdraw" << endl;
+    cout << string(50, '-') << endl;
+    cout << "Select option:";
 
     cin >> userInput;
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
+    cout << endl;
+
     if (userInput == 'C' || userInput == 'c')
     {
-        string confirmPassword;
+        deleteUser(file, user);
+    }
 
-        cout << "Enter password to delete the account:"<<endl;
-        cin >> confirmPassword;
+    else if (userInput == 'D' || userInput == 'd')
+    {
+        double depositAmount;
 
-        if (confirmPassword == user.password)
+        cout << "Enter the amount you want to deposit: " ;
+        
+        while (!(cin >> depositAmount)) 
         {
-            if (user.money == 0)
-            {
-                string fileLine;
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
-                ofstream temp("temp.txt");
-
-                while (getline(file, fileLine))
-                {
-                    if (fileLine.substr(0, fileLine.find(":"))!=user.username)
-                    {
-                        temp << fileLine << endl;
-                    }
-                }
-
-                file.close();
-                temp.close();
-
-                remove(FILENAME);
-                rename("temp.txt", FILENAME);
-
-                file.open(FILENAME);
-
-                mainMenu(file);
-
-                return;
-            }
-            else
-            {
-                cout << "The bank account should be empty before it can be deleted!" << endl;
-
-                actionMenu(file, user);
-            }
+            cout << "Invalid input.  Try again: ";
         }
-        else
+
+        cout << endl;
+
+        if (depositAmount <= 0)
         {
-            cout << "Password is incorect" << endl;
+            cout << "Please enter a valid amount!" << endl;
 
             actionMenu(file, user);
         }
-    }
-    else if (userInput == 'D' || userInput == 'd')
-    {
-        float deposit;
 
-        cout << "Enter the amount you want to deposit:" << endl;
-        
-        cin >> deposit;
+        else
+        {
+            user.money = user.money + user.fixDouble(depositAmount);
 
-        user.deposit(deposit);
-
-        user.saveChanges(file);
+            user.saveChanges(file);
+        }
     }
 
     else if (userInput == 'L' || userInput == 'l')
@@ -340,21 +360,33 @@ void actionMenu(fstream& file, User& user)
     {
         string username;
 
-        float transferAmount;
+        double transferAmount;
 
-        cout << "Enter user's username: " << endl;
+        cout << "Enter user's username: ";
 
         cin >> username;
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
-        cout << "Enter the amount you want to transfer:" << endl;
+        cout << "Enter the amount you want to transfer: ";
 
-        cin >> transferAmount;
+        /*cin >> transferAmount;
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');*/
+
+        while (!(cin >> transferAmount)) 
+        {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid input.  Try again: ";
+        }
+
+        cout << endl;
 
         if (hasExistingUsername(file, username) == true)
         {
             if (transferAmount <= 0)
             {
-                cout << "Please enter a valid amount" << endl;
+                cout << "Please enter a valid amount!" << endl;
 
                 actionMenu(file, user);
             }
@@ -362,7 +394,7 @@ void actionMenu(fstream& file, User& user)
             {
                 if (user.isOverdraft(transferAmount) == true)
                 {
-                    cout << "Insuficient funds!";
+                    cout << "Insuficient funds!"<<endl;
 
                     actionMenu(file, user);
                 }
@@ -370,11 +402,13 @@ void actionMenu(fstream& file, User& user)
                 {
                     User transferUser = getUser(file, username);
 
-                    user.transfer(transferUser, transferAmount);
+                    user.money = user.money - transferAmount;
 
-                    user.saveChanges(file);
+                    transferUser.money = transferUser.money + transferAmount;
 
                     transferUser.saveChanges(file);
+
+                    user.saveChanges(file);
                 }
             }
         }
@@ -386,34 +420,45 @@ void actionMenu(fstream& file, User& user)
 
     else if (userInput == 'W' || userInput == 'w')
     {
-        float withdrawAmount;
+        double withdrawAmount;
 
-        cout << "Enter the amount you want to withdraw:" << endl;
+        cout << "Enter the amount you want to withdraw: ";
 
-        cin >> withdrawAmount;
+        while (!(cin >> withdrawAmount)) 
+        {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid input.  Try again: ";
+        }
+
+        cout << endl;
 
         if (withdrawAmount <= 0)
         {
-            cout << "Please enter a valid amount" << endl;
+            cout << "Please enter a valid amount!" << endl;
 
             actionMenu(file, user);
         }
+
         else if (user.isOverdraft(withdrawAmount) == true)
         {
-            cout << "Insuficient funds!";
+            cout << "Insuficient funds!"<<endl;
 
             actionMenu(file, user);
         }
+
         else
         {
-            user.withdraw(withdrawAmount);
+            user.money = user.money - user.fixDouble(withdrawAmount);
 
             user.saveChanges(file);
         }       
     }
+
     else
     {
-        cout << "Invalid action!" << endl;
+        cout << "Invalid action!" << endl<<endl;
     }
 
     actionMenu(file, user);
@@ -423,11 +468,15 @@ void login(fstream& file)
 {
     string fileLine, username, password,compareString;
 
-    cout << "Username:" << endl;
+    cout << "Username: ";
     cin >> username;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
     
-    cout << "Password:" << endl;
+    cout << "Password: ";
     cin >> password;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+    cout << endl ;
 
     compareString.append(username);
     compareString.append(":");
@@ -462,16 +511,19 @@ void regist(fstream& file)
     
     string username,password,confirmPassword;
 
-    cout << "Username: " << endl;
+    cout << "Username: ";
     cin >> username;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
     
-    cout << "Password:" << endl;
+    cout << "Password: ";
     cin >> password;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
-    cout << "Confirm password: " << endl;
+    cout << "Confirm password: ";
     cin >> confirmPassword;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
-    for (int i = 0; i < username.size(); i++)
+    for (unsigned int i = 0; i < username.size(); i++)
     {
         if (username[i] < 33 || (username[i] >= 48 && username[i] <= 57) || username[i]>126)
         {
@@ -490,23 +542,22 @@ void regist(fstream& file)
 
     if (isValidPassword(password, confirmPassword) == false)
     {
-        cout << "Invalid password!" << endl;
-
         regist(file);
     }
+
     else
     {
         User user = User(username, password ,file);
 
+        file.seekg(0, file.end);
+
         file << user.username+":"+hashPassword(user.password)+":0" <<endl;
+
+        file.clear();
+        file.seekg(0, file.beg);
 
         actionMenu(file,user);
     }
-
-}
-
-void quit()
-{
 
 }
 
@@ -524,54 +575,55 @@ void mainMenu(fstream& file)
         return;
     }*/
 
-    cout << "\tPlease select one of the following actions: " << endl;
-    cout << "==========================================================" << endl;
+    cout << "Please select one of the following actions" << endl;
+    cout << string(50, '-') << endl;
     cout << "L-login" << endl;
     cout << "R-register" << endl;
     cout << "Q-quit" << endl;
-    cout << "==========================================================" << endl;
+    cout << string(50, '-') << endl;
+    cout << "Select action: ";
 
     cin >> userInput;
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
+    cout << endl;
+
     if (userInput == 'L' || userInput == 'l')
     {       
         login(file);
+
         return;
     }
 
     if (userInput == 'R' || userInput == 'r')
     {
         regist(file);
+
         return;
     }
 
     if (userInput == 'Q' || userInput == 'q')
     {
-        cout << "quit";
-        quit();
         return;
     }
 
     cout << "Please select valid action!"<<endl<<endl;
 
     mainMenu(file);
-
 }
 
 
 
 int main()
 {
-    //const string fileName = "users.txt";
-
     fstream file;
 
     file.open(FILENAME, ios::in | ios::out | ios::app);
 
     if (!file.is_open())
     {
-       // cout << "Could not find " + FILENAME + " !\nPlease make sure the file is in the correct directory and is named correctly!" << endl;
+        cout << "An error has occurred!" << endl;
+
         return 0;
     }
 
