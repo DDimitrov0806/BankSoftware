@@ -1,8 +1,21 @@
+/**
+*
+* Solution to course project # 3
+* Introduction to programming course
+* Faculty of Mathematics and Informatics of Sofia University
+* Winter semester 2020/2021
+*
+* @author Danail Dimitrov
+* @idnumber 62605
+* @compiler VC
+*
+* main cpp file
+*
+*/
 
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <math.h>
 
 using namespace std;
 
@@ -369,9 +382,6 @@ void actionMenu(fstream& file, User& user)
 
         cout << "Enter the amount you want to transfer: ";
 
-        /*cin >> transferAmount;
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');*/
-
         while (!(cin >> transferAmount)) 
         {
             cin.clear();
@@ -523,6 +533,8 @@ void regist(fstream& file)
     cin >> confirmPassword;
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
+    cout << endl;
+
     for (unsigned int i = 0; i < username.size(); i++)
     {
         if (username[i] < 33 || (username[i] >= 48 && username[i] <= 57) || username[i]>126)
@@ -565,16 +577,6 @@ void mainMenu(fstream& file)
 {
     char userInput;
 
-    /*string fileName = "users.txt";
-    fstream file;
-    file.open(fileName, ios::in | ios::out | ios::app);
-
-    if (!file.is_open())
-    {
-        cout << "Could not find " + fileName + " !\nPlease make sure the file is in the correct directory and is named correctly!"<<endl;
-        return;
-    }*/
-
     cout << "Please select one of the following actions" << endl;
     cout << string(50, '-') << endl;
     cout << "L-login" << endl;
@@ -612,15 +614,13 @@ void mainMenu(fstream& file)
     mainMenu(file);
 }
 
-
-
 int main()
 {
     fstream file;
 
     file.open(FILENAME, ios::in | ios::out | ios::app);
 
-    if (!file.is_open())
+    if (file.fail())
     {
         cout << "An error has occurred!" << endl;
 
@@ -632,5 +632,4 @@ int main()
     file.close();
 
     return 0;
-
 }
